@@ -1,0 +1,149 @@
+/* ============================================================
+   Legacy Design Studio — app styling.
+   Brand truth lives in /tokens.css (imported first in layout.tsx).
+   This file: Tailwind + shadcn/ui theme tokens for the app CHROME,
+   self-hosted brand fonts, and the theme-flippable canvas tokens.
+
+   Naming: shadcn UI vars are deliberately namespaced (--muted-bg,
+   --accent-bg, --radius-ui) so they never collide with the brand
+   tokens (--muted, --accent, --radius) from tokens.css.
+   ============================================================ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* dark UI chrome */
+    --background: 240 8% 5%;
+    --foreground: 0 0% 91%;
+    --card: 240 6% 8%;
+    --card-foreground: 0 0% 91%;
+    --popover: 240 6% 7%;
+    --popover-foreground: 0 0% 91%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 8% 6%;
+    --secondary: 240 4% 13%;
+    --secondary-foreground: 0 0% 91%;
+    --muted-bg: 240 4% 13%;
+    --muted-fg: 240 4% 64%;
+    --accent-bg: 240 4% 16%;
+    --accent-fg: 0 0% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5% 14%;
+    --input: 240 5% 16%;
+    --ring: 0 0% 75%;
+    --radius-ui: 0.5rem;
+    /* soft radial glow behind login/stage surfaces (flips with the theme) */
+    --glow: 240 6% 11%;
+  }
+  /* light UI chrome — the exact negative of the dark set: lightness
+     flipped, hue/saturation kept. Toggled via data-theme on <html>
+     (the Keystone logo square is the switch — see ThemeToggle). */
+  :root[data-theme="light"] {
+    --background: 240 8% 98%;
+    --foreground: 0 0% 9%;
+    --card: 240 6% 96%;
+    --card-foreground: 0 0% 9%;
+    --popover: 240 6% 97%;
+    --popover-foreground: 0 0% 9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 240 8% 98%;
+    --secondary: 240 4% 90%;
+    --secondary-foreground: 0 0% 9%;
+    --muted-bg: 240 4% 90%;
+    --muted-fg: 240 4% 40%;
+    --accent-bg: 240 4% 87%;
+    --accent-fg: 0 0% 9%;
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5% 86%;
+    --input: 240 5% 84%;
+    --ring: 0 0% 25%;
+    --glow: 240 6% 89%;
+  }
+  * {
+    @apply border-border;
+  }
+}
+
+/* ---- Self-hosted brand fonts (override the Google @import in tokens.css) ---- */
+@font-face { font-family: "Archivo"; font-style: normal; font-weight: 400; font-display: block; src: url("/fonts/archivo-400.woff2") format("woff2"); }
+@font-face { font-family: "Archivo"; font-style: normal; font-weight: 600; font-display: block; src: url("/fonts/archivo-600.woff2") format("woff2"); }
+@font-face { font-family: "Archivo"; font-style: normal; font-weight: 800; font-display: block; src: url("/fonts/archivo-800.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 400; font-display: block; src: url("/fonts/jetbrains-mono-400.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 600; font-display: block; src: url("/fonts/jetbrains-mono-600.woff2") format("woff2"); }
+
+html, body { margin: 0; padding: 0; }
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   CANVAS ROOT — re-derives the logo tokens against the canvas's
+   OWN --bg/--fg (set inline per theme) so the keystone flips.
+   Mirrors tokens.css exactly. Untouched by Tailwind preflight
+   because every property below is set explicitly.
+   ============================================================ */
+.canvas-root {
+  --line:        color-mix(in srgb, var(--fg) 14%, var(--bg));
+  --label-color: color-mix(in srgb, var(--fg) 42%, var(--bg));
+  --mark-1:      color-mix(in srgb, var(--fg) 82%, var(--bg));
+  --mark-2:      color-mix(in srgb, var(--fg) 46%, var(--bg));
+  --mark-hi:     var(--fg);
+  --disc:        color-mix(in srgb, var(--fg) 5%, var(--bg));
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+  overflow: hidden;
+  container-type: size;
+}
+.keystone .fl { fill: var(--mark-1); }
+.keystone .fr { fill: var(--mark-2); }
+.keystone .fh { fill: var(--mark-hi); }
+.keystone .disc { fill: var(--disc); }
+.keystone .ring { fill: none; stroke: var(--line); stroke-width: 2; }
+
+/* Chrome logo squares flip to their negative with the app theme (white
+   square, black keystone). Content canvases that pin --bg/--fg inline
+   (their own theme) are unaffected — inline style wins. */
+:root[data-theme="light"] .canvas-root {
+  --bg: #ffffff;
+  --fg: #000000;
+}
+
+/* Status tints (emerald/amber/sky/rose/violet -200/-400) are tuned for the
+   dark ground — remap them to their -700 shades on the light theme so they
+   stay readable. Unlayered on purpose: wins over @layer utilities. */
+:root[data-theme="light"] .text-emerald-300, :root[data-theme="light"] .text-emerald-400 { color: #047857; }
+:root[data-theme="light"] .text-amber-200, :root[data-theme="light"] .text-amber-300, :root[data-theme="light"] .text-amber-400 { color: #b45309; }
+:root[data-theme="light"] .text-sky-300, :root[data-theme="light"] .text-sky-400 { color: #0369a1; }
+:root[data-theme="light"] .text-rose-200, :root[data-theme="light"] .text-rose-300 { color: #be123c; }
+:root[data-theme="light"] .text-violet-300 { color: #6d28d9; }
+
+/* Rendered markdown (blog post body) */
+.md { color: hsl(var(--foreground)); line-height: 1.7; font-size: 1.02rem; }
+.md > :first-child { margin-top: 0; }
+.md h1, .md h2, .md h3 { font-weight: 700; line-height: 1.25; margin: 1.6em 0 0.5em; letter-spacing: -0.01em; }
+.md h1 { font-size: 1.6rem; }
+.md h2 { font-size: 1.3rem; }
+.md h3 { font-size: 1.1rem; }
+.md p { margin: 0.9em 0; }
+.md a { color: hsl(var(--foreground)); text-decoration: underline; text-underline-offset: 3px; }
+.md ul, .md ol { margin: 0.9em 0; padding-left: 1.3em; }
+.md li { margin: 0.3em 0; }
+.md ul { list-style: disc; }
+.md ol { list-style: decimal; }
+.md blockquote { border-left: 2px solid hsl(var(--border)); padding-left: 1em; margin: 1em 0; color: hsl(var(--muted-foreground)); }
+.md code { background: hsl(var(--muted)); padding: 0.15em 0.4em; border-radius: 0.3rem; font-size: 0.9em; }
+.md pre { background: hsl(var(--muted)); padding: 1em; border-radius: 0.6rem; overflow-x: auto; margin: 1em 0; }
+.md pre code { background: none; padding: 0; }
+.md hr { border: 0; border-top: 1px solid hsl(var(--border)); margin: 1.8em 0; }
+.md strong { font-weight: 700; }
+.md img { border-radius: 0.6rem; margin: 1em 0; max-width: 100%; }

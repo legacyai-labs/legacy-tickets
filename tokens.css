@@ -1,0 +1,52 @@
+/* ============================================================
+   LEGACY AI — DESIGN TOKENS
+   Single source of truth. Werte hier ändern → Logo, Typografie
+   und alle Komponenten aktualisieren sich überall, wo sie
+   var(--…) referenzieren. Keine festen Farben/Fonts woanders.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root{
+  /* ---- Brand colors ---- */
+  --bg:      #000000;   /* Hintergrund / Fläche            */
+  --fg:      #ffffff;   /* Text + helle Logo-Facette       */
+  --muted:   #9a9da1;   /* das grau hervorgehobene "Twist"-Wort */
+  --accent:  #c7973e;   /* optionaler warmer Akzent (default aus) */
+
+  /* ---- Typography ---- */
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --weight-display:    800;
+  --tracking-display: -1px;
+
+  /* Type scale */
+  --fs-hero:  clamp(2rem, 5.6vw, 4.5rem);
+  --fs-h2:    1.75rem;
+  --fs-body:  1rem;
+  --fs-label: 0.6875rem;   /* 11px Mono-Labels */
+  --leading-hero: 1.04;
+
+  /* ---- Shape ---- */
+  --radius: 6px;
+
+  /* ---- Derived — NICHT hardcoden ---- */
+  --line:        color-mix(in srgb, var(--fg) 14%, var(--bg)); /* Hairlines  */
+  --label-color: color-mix(in srgb, var(--fg) 42%, var(--bg)); /* Eyebrows   */
+  --mark-1:      color-mix(in srgb, var(--fg) 82%, var(--bg)); /* Facette links  */
+  --mark-2:      color-mix(in srgb, var(--fg) 46%, var(--bg)); /* Facette rechts */
+  --mark-hi:     var(--fg);                                    /* Lichtfalz      */
+  --disc:        color-mix(in srgb, var(--fg) 5%,  var(--bg)); /* Avatar-Kreis   */
+}
+
+/* ============================================================
+   LIGHT THEME — das exakte Negativ des dunklen Sets.
+   Umgeschaltet über data-theme auf <html> (der Logo-Klick);
+   alle abgeleiteten Tokens oben mischen sich automatisch neu
+   gegen die geflippten --bg/--fg. --accent (Gold) bleibt gleich.
+   ============================================================ */
+:root[data-theme="light"]{
+  --bg:    #ffffff;
+  --fg:    #000000;
+  --muted: #65625e;   /* Negativ von #9a9da1 */
+}

@@ -1,0 +1,46 @@
+{
+  "name": "legacy-tickets",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Legacy AI — Ticket Board. The operative memory for bugs, tasks and ideas: humans AND the Autopilot (via MCP/gateway) file, retrieve and work tickets — the AI self-optimization loop. Deleting stays human-only. Studio app with the tickets domain as backend.",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@radix-ui/react-label": "2.1.1",
+    "@radix-ui/react-scroll-area": "1.2.2",
+    "@radix-ui/react-select": "2.1.4",
+    "@radix-ui/react-separator": "1.1.1",
+    "@radix-ui/react-slot": "1.1.1",
+    "@radix-ui/react-switch": "1.1.2",
+    "@radix-ui/react-tabs": "1.1.2",
+    "@radix-ui/react-tooltip": "1.1.6",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "lucide-react": "0.469.0",
+    "marked": "14.1.4",
+    "next": "15.1.6",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "sanitize-html": "2.13.1",
+    "sonner": "1.7.1",
+    "tailwind-merge": "2.6.0",
+    "tailwindcss-animate": "1.0.7"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.5",
+    "@types/react": "19.0.7",
+    "@types/react-dom": "19.0.3",
+    "@types/sanitize-html": "2.13.0",
+    "autoprefixer": "10.4.20",
+    "postcss": "8.4.49",
+    "tailwindcss": "3.4.17",
+    "typescript": "5.7.3",
+    "vitest": "^2.0.0"
+  }
+}
