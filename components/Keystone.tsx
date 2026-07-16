@@ -1,5 +1,5 @@
 // generated from legacy-icons v0.1.0 — do not edit by hand
-// source: https://github.com/Luraxx/legacy-icons (src/Keystone.tsx + src/KeystoneGlyph.tsx)
+// source: https://github.com/legacyai-labs/legacy-icons (src/Keystone.tsx + src/KeystoneGlyph.tsx)
 // regenerate: npm run gen:vendor (in the legacy-icons repo), then copy vendor/Keystone.tsx
 
 // Inline keystone mark. Colours come from CSS vars on .canvas-root,
