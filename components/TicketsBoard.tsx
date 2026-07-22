@@ -115,7 +115,7 @@ async function apiError(r: Response): Promise<string> {
 }
 
 export function TicketsBoard() {
-  const [filter, setFilter] = useState<"all" | TicketStatus>("all");
+  const [filter, setFilter] = useState<"all" | TicketStatus>("open");
   const [kindFilter, setKindFilter] = useState<"all" | TicketKind>("all");
   const [priorityFilter, setPriorityFilter] = useState<"all" | TicketPriority>("all");
   const [labelFilter, setLabelFilter] = useState<string>("all");
