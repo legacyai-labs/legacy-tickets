@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
-import { AUTH_COOKIE, authEnabled, expectedToken } from "./auth";
+import { AUTH_COOKIE, authEnabled } from "./auth";
+import { open } from "./session";
 
 /**
  * WHO is calling — this powers the delete boundary:
@@ -32,12 +33,34 @@ export function kindOf(service: boolean, humanCookie: boolean): AuthKind {
   return null;
 }
 
-/** True if the request carries a valid login cookie. Fails closed: no password
- *  configured means the cookie can never authenticate an API call. */
+/** True if the request carries a valid session cookie. Fails closed: without a
+ *  signing secret nothing this app issued can be verified, so nothing is.
+ *
+ *  The only change from the password era is WHAT the cookie has to be. It is no
+ *  longer a constant to compare against but a signed statement to open, so this
+ *  is a signature check and an expiry check rather than an equality test. The
+ *  service path and the precedence rule are untouched on purpose. */
 async function humanAuthed(): Promise<boolean> {
   if (!authEnabled()) return false;
-  const jar = await cookies();
-  return jar.get(AUTH_COOKIE)?.value === expectedToken();
+  try {
+    const jar = await cookies();
+    return open(jar.get(AUTH_COOKIE)?.value) !== null;
+  } catch {
+    return false; // outside a request scope (e.g. unit tests) -> not a human
+  }
+}
+
+/** WHO is here, for the pages that want to greet them. Null for a service
+ *  caller — a machine has no name to show. */
+export async function currentUser(): Promise<{ email: string; name: string } | null> {
+  if (!authEnabled()) return null;
+  try {
+    const jar = await cookies();
+    const session = open(jar.get(AUTH_COOKIE)?.value);
+    return session ? { email: session.email, name: session.name } : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Classify the caller. Service tokens win (they never coexist with a cookie). */

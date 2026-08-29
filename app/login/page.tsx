@@ -1,44 +1,18 @@
-"use client";
-
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { KeystoneGlyph } from "@/components/Keystone";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Loader2, LogIn } from "lucide-react";
+import { issuerConfigured } from "@/lib/auth";
+import { PROVIDER_NAME } from "@/lib/fides";
 
 export const dynamic = "force-dynamic";
 
-export default function LoginPage() {
-  const router = useRouter();
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-      if (!res.ok) {
-        setError((await res.json().catch(() => ({}))).error || "Anmeldung fehlgeschlagen.");
-        setBusy(false);
-        return;
-      }
-      router.replace("/board");
-      router.refresh();
-    } catch {
-      setError("Netzwerkfehler.");
-      setBusy(false);
-    }
-  }
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
+  const ready = issuerConfigured();
 
   return (
     <main
@@ -58,27 +32,35 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <form onSubmit={submit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="pw">Passwort</Label>
-            <Input
-              id="pw"
-              type="password"
-              autoFocus
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-            />
-          </div>
+        <div className="space-y-4">
+          {error && <p className="text-sm leading-relaxed text-destructive">{error}</p>}
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {ready ? (
+            <Button asChild className="w-full">
+              <a href="/api/auth/start">Mit {PROVIDER_NAME()} anmelden</a>
+            </Button>
+          ) : (
+            <p className="text-center text-sm text-muted-foreground">
+              Für diesen Bereich ist kein Anmeldedienst eingerichtet.
+            </p>
+          )}
+        </div>
 
-          <Button type="submit" className="w-full" disabled={busy || !password}>
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
-            {busy ? "Anmelden…" : "Anmelden"}
-          </Button>
-        </form>
+        {/* Whose login this is, said quietly and only where somebody is about to
+            type a password. Recognising the name here is what makes landing on
+            id.fidesid.com feel expected rather than like a redirect somewhere
+            strange. */}
+        <p className="mt-8 text-center text-[0.7rem] text-muted-foreground">
+          Anmeldung über{" "}
+          <a
+            href="https://fidesid.com"
+            target="_blank"
+            rel="noreferrer"
+            className="underline-offset-2 hover:text-foreground hover:underline"
+          >
+            Fides&nbsp;ID
+          </a>
+        </p>
       </div>
     </main>
   );
