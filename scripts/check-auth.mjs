@@ -21,7 +21,19 @@ const PORT = 5391;
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const SERVICE_TOKEN = "autopilot-service-token";
 const SECRET = "the-signing-secret";
-const CLIENT = "legacy-studio";
+const CLIENT = "legacy-ops";
+/**
+ * The address the BROWSER knows, deliberately NOT the one the app is reached on.
+ *
+ * They were the same here until now, and that is precisely why sixteen copies
+ * of the callback could redirect to `req.url` — the container's own address —
+ * and look perfectly correct in every test. In production that address is
+ * localhost, and people landed on their own machine after signing in. Keeping
+ * the two apart is what makes the difference visible.
+ */
+const OEFFENTLICH = "https://tickets.example.test";
+/** Follow a redirect meant for the browser, on the app we actually started. */
+const nachInnen = (url) => String(url).replace(OEFFENTLICH, base);
 
 let failed = 0;
 const check = (name, ok, detail) => {
@@ -59,6 +71,7 @@ async function start(env) {
     stdio: ["ignore", "ignore", "inherit"],
     detached: true,
   });
+  laufend = app;
   for (let i = 0; i < 60; i++) {
     await new Promise((r) => setTimeout(r, 500));
     try {
@@ -71,6 +84,30 @@ async function start(env) {
   throw new Error("die App kam nicht hoch");
 }
 
+
+/**
+ * Whatever is running, so a crash does not leave it behind.
+ *
+ * Without this, a script that throws half-way keeps its server alive on the
+ * port — and the NEXT repository's run then refuses to start, or worse, would
+ * have measured that leftover. One failure would stall a whole fleet sweep.
+ */
+let laufend = null;
+const aufraeumen = () => {
+  if (laufend) stoppen(laufend);
+  laufend = null;
+};
+process.on("exit", aufraeumen);
+process.on("uncaughtException", (err) => {
+  console.error(err);
+  aufraeumen();
+  process.exit(1);
+});
+process.on("unhandledRejection", (err) => {
+  console.error(err);
+  aufraeumen();
+  process.exit(1);
+});
 
 /** The whole process group, not just the wrapper. */
 function stoppen(app) {
@@ -100,7 +137,7 @@ const FULL = {
   FIDES_BACKCHANNEL_FROM: "FIDESID_URL",
   FIDESID_URL: idp.mesh,
   FIDES_CLIENT_ID: CLIENT,
-  FIDES_PUBLIC_URL: base,
+  FIDES_PUBLIC_URL: OEFFENTLICH,
 };
 
 let app = await start(FULL);
@@ -136,11 +173,18 @@ const authorized = await fetch(away, { redirect: "manual" });
 const asked = idp.authorizations.at(-1) ?? {};
 check("…with PKCE, a state and this client", asked.code_challenge_method === "S256" &&
   Boolean(asked.code_challenge) && asked.client_id === CLIENT, JSON.stringify(asked));
-const callback = await fetch(authorized.headers.get("location"), {
+const callback = await fetch(nachInnen(authorized.headers.get("location")), {
   redirect: "manual",
   headers: { cookie: jar },
 });
 const session = (callback.headers.getSetCookie?.() ?? []).find((c) => c.startsWith(KEKS));
+// The bug that reached production: built from req.url, this said
+// http://localhost:3000 and sent people to their own machine.
+check("the redirect after signing in points at the PUBLIC address, not the container's",
+  (callback.headers.get("location") ?? "").startsWith(OEFFENTLICH),
+  callback.headers.get("location"));
+check("…and the session cookie is marked Secure, from the public scheme",
+  /secure/i.test(session ?? ""), String(session));
 check("the callback lands in the studio with a session",
   [302, 307].includes(callback.status) &&
   (callback.headers.get("location") ?? "").includes(SEITE) && Boolean(session),
@@ -193,7 +237,7 @@ idp.respondWith(({ nonce, sign, claimsFor }) => ({ id_token: sign(claimsFor({ no
 const started2 = await fetch(`${base}/api/auth/start`, { redirect: "manual" });
 const jar2 = ((started2.headers.getSetCookie?.() ?? []).find((c) => c.startsWith("legacy_auth_flow=")) ?? "").split(";")[0];
 const auth2 = await fetch(new URL(started2.headers.get("location")), { redirect: "manual" });
-const denied = await fetch(auth2.headers.get("location"), { redirect: "manual", headers: { cookie: jar2 } });
+const denied = await fetch(nachInnen(auth2.headers.get("location")), { redirect: "manual", headers: { cookie: jar2 } });
 check("a person with no role for this client is turned away",
   (denied.headers.get("location") ?? "").includes("error=") &&
   !(denied.headers.getSetCookie?.() ?? []).some((c) => c.startsWith(KEKS)),
@@ -204,7 +248,7 @@ idp.respondWith(({ nonce, sign, claimsFor }) => ({ id_token: sign(claimsFor({ no
 const started3 = await fetch(`${base}/api/auth/start`, { redirect: "manual" });
 const jar3 = ((started3.headers.getSetCookie?.() ?? []).find((c) => c.startsWith("legacy_auth_flow=")) ?? "").split(";")[0];
 const auth3 = await fetch(new URL(started3.headers.get("location")), { redirect: "manual" });
-const unsigned = await fetch(auth3.headers.get("location"), { redirect: "manual", headers: { cookie: jar3 } });
+const unsigned = await fetch(nachInnen(auth3.headers.get("location")), { redirect: "manual", headers: { cookie: jar3 } });
 check("an UNSIGNED token is refused",
   !(unsigned.headers.getSetCookie?.() ?? []).some((c) => c.startsWith(KEKS)),
   unsigned.headers.get("location"));

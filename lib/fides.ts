@@ -34,12 +34,35 @@ const ISSUER = () => (process.env.FIDES_ISSUER || "").replace(/\/$/, "");
  */
 const BACKCHANNEL = () =>
   (process.env[process.env.FIDES_BACKCHANNEL_FROM ?? ""] || "").replace(/\/$/, "");
-const CLIENT_ID = () => process.env.FIDES_CLIENT_ID || "legacy-studio";
+const CLIENT_ID = () => process.env.FIDES_CLIENT_ID || "legacy-ops";
 export const PROVIDER_NAME = () => process.env.FIDES_NAME || "Fides ID";
 const PUBLIC_URL = () => (process.env.FIDES_PUBLIC_URL || "").replace(/\/$/, "");
 
 /** Must match a redirectUri registered on the client, exactly. */
 export const redirectUri = () => `${PUBLIC_URL()}/api/auth/callback`;
+
+/**
+ * A URL on THIS app, as the browser knows it.
+ *
+ * Never `new URL(pfad, req.url)`. Behind the fleet's edge, `req.url` is the
+ * address the CONTAINER was reached on — http://localhost:3000 — so a redirect
+ * built from it sends the person to their own machine after signing in. It
+ * looks perfectly fine in development, where the two happen to be the same,
+ * which is exactly why it survived sixteen copies of this file.
+ *
+ * Falls back to req.url only when nothing else is configured, so running this
+ * outside the fleet still works.
+ */
+export function onPublicUrl(path: string, fallback: string): URL {
+  return new URL(path, PUBLIC_URL() || fallback);
+}
+
+/** Is this app served over https, as the BROWSER sees it? Same trap: the
+ *  connection reaching the container is plain http behind the edge, so asking
+ *  the request would leave the session cookie un-secured in production. */
+export function servedSecurely(): boolean {
+  return PUBLIC_URL().startsWith("https:");
+}
 
 /** Swap a public endpoint's origin for the mesh one, keeping its path. */
 function onBackchannel(endpoint: string): string {

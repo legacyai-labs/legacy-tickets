@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE } from "@/lib/auth";
-import { complete } from "@/lib/fides";
+import { complete, onPublicUrl, servedSecurely } from "@/lib/fides";
 import { FLOW_COOKIE, openFlow } from "@/lib/flow";
 import { seal, SESSION_TTL_SECONDS } from "@/lib/session";
 
@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(req: NextRequest) {
   const back = (params: Record<string, string>) =>
-    NextResponse.redirect(new URL(`/login?${new URLSearchParams(params)}`, req.url), {
+    NextResponse.redirect(onPublicUrl(`/login?${new URLSearchParams(params)}`, req.url), {
       headers: { "cache-control": "no-store" },
     });
 
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   const who = await complete(req.nextUrl.searchParams.get("code") ?? "", attempt);
   if ("error" in who) return back({ error: who.error });
 
-  const res = NextResponse.redirect(new URL("/board", req.url), {
+  const res = NextResponse.redirect(onPublicUrl("/board", req.url), {
     headers: { "cache-control": "no-store" },
   });
   res.cookies.set(AUTH_COOKIE, seal({
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
-    secure: req.nextUrl.protocol === "https:",
+    secure: servedSecurely(),
     maxAge: SESSION_TTL_SECONDS,
   });
   // The attempt is spent — leaving it would let a replayed callback look fresh.
