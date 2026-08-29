@@ -82,6 +82,10 @@ function stoppen(app) {
 }
 
 const base = `http://127.0.0.1:${PORT}`;
+/** Die Seite, die wirklich hinter dem Waechter liegt. */
+const SEITE = "/board";
+/** So heisst der Sitzungs-Keks in DIESEM Repo. */
+const KEKS = "legacy_auth=";
 const API = { pfad: "/api/board", methode: "GET" };
 const api = (headers) =>
   fetch(`${base}${API.pfad}`, {
@@ -113,7 +117,7 @@ check("no credential at all → refused", !durch(naked), `status=${naked.status}
 
 // --- 2. the person -----------------------------------------------------------
 console.log("\n2. A person signs in at the provider:");
-const guarded = await fetch(`${base}/board`, { redirect: "manual" });
+const guarded = await fetch(`${base}${SEITE}`, { redirect: "manual" });
 check("/studio without a session → /login", [302, 307].includes(guarded.status) &&
   (guarded.headers.get("location") ?? "").includes("/login"), `status=${guarded.status}`);
 
@@ -136,24 +140,43 @@ const callback = await fetch(authorized.headers.get("location"), {
   redirect: "manual",
   headers: { cookie: jar },
 });
-const session = (callback.headers.getSetCookie?.() ?? []).find((c) => c.startsWith("legacy_auth="));
+const session = (callback.headers.getSetCookie?.() ?? []).find((c) => c.startsWith(KEKS));
 check("the callback lands in the studio with a session",
   [302, 307].includes(callback.status) &&
-  (callback.headers.get("location") ?? "").includes("/board") && Boolean(session),
+  (callback.headers.get("location") ?? "").includes(SEITE) && Boolean(session),
   `status=${callback.status} to=${callback.headers.get("location")}`);
 check("…httpOnly, so no script can read the identity", /httponly/i.test(session ?? ""), String(session));
 
 const sessionJar = (session ?? "").split(";")[0];
-const asPerson = await fetch(`${base}/board`, { headers: { cookie: sessionJar }, redirect: "manual" });
+const asPerson = await fetch(`${base}${SEITE}`, { headers: { cookie: sessionJar }, redirect: "manual" });
 check("/studio with the session → through", asPerson.status === 200, `status=${asPerson.status}`);
 const apiAsPerson = await api({ cookie: sessionJar });
 check("…and so is the API, under the person's own cookie", durch(apiAsPerson), `status=${apiAsPerson.status}`);
 
+// The one thing this migration actually gained for the people using the app:
+// it knows a NAME now. Before, every session was "somebody who knew the
+// password" and there was nothing to show. If it is not on the page, the name
+// travelled all the way from Fides and got dropped at the last step.
+const seite = await (await fetch(`${base}${SEITE}`, { headers: { cookie: sessionJar } })).text();
+check("the page says WHO is signed in", seite.includes("Luis Dehlwes"),
+  "der Name steht nicht im HTML");
+
+// And a name you cannot put down is a problem on a shared machine.
+const raus = await fetch(`${base}/api/auth/logout`, {
+  method: "POST", headers: { cookie: sessionJar }, redirect: "manual",
+});
+const geloescht = (raus.headers.getSetCookie?.() ?? []).find((c) => c.startsWith(KEKS));
+check("signing out clears the session and returns to /login",
+  [302, 303, 307].includes(raus.status) &&
+  (raus.headers.get("location") ?? "").includes("/login") &&
+  /max-age=0|expires=thu, 01 jan 1970/i.test(geloescht ?? ""),
+  `status=${raus.status} cookie=${geloescht}`);
+
 // --- 3. the forgeries --------------------------------------------------------
 console.log("\n3. What must not get in:");
-const tampered = sessionJar.replace(/legacy_auth=([^.]+)\./, (_m, p) =>
-  `legacy_auth=${Buffer.from(JSON.stringify({ sub: "x", email: "chef@beispiel.de", name: "Chef", exp: 2 ** 31 })).toString("base64url")}.`);
-const forged = await fetch(`${base}/board`, { headers: { cookie: tampered }, redirect: "manual" });
+const tampered = sessionJar.replace(/=([^.]+)\./, (_m, p) =>
+  `=${Buffer.from(JSON.stringify({ sub: "x", email: "chef@beispiel.de", name: "Chef", exp: 2 ** 31 })).toString("base64url")}.`);
+const forged = await fetch(`${base}${SEITE}`, { headers: { cookie: tampered }, redirect: "manual" });
 check("a payload edited in the browser → back to /login",
   [302, 307].includes(forged.status), `status=${forged.status}`);
 
@@ -162,7 +185,7 @@ const noState = await fetch(`${base}/api/auth/callback?code=the-code&state=never
 });
 check("a state we never issued → /login with an error, never a session",
   (noState.headers.get("location") ?? "").includes("error=") &&
-  !(noState.headers.getSetCookie?.() ?? []).some((c) => c.startsWith("legacy_auth=")),
+  !(noState.headers.getSetCookie?.() ?? []).some((c) => c.startsWith(KEKS)),
   noState.headers.get("location"));
 
 // Access is the provider's decision, not ours: no role on this client, no entry.
@@ -173,7 +196,7 @@ const auth2 = await fetch(new URL(started2.headers.get("location")), { redirect:
 const denied = await fetch(auth2.headers.get("location"), { redirect: "manual", headers: { cookie: jar2 } });
 check("a person with no role for this client is turned away",
   (denied.headers.get("location") ?? "").includes("error=") &&
-  !(denied.headers.getSetCookie?.() ?? []).some((c) => c.startsWith("legacy_auth=")),
+  !(denied.headers.getSetCookie?.() ?? []).some((c) => c.startsWith(KEKS)),
   denied.headers.get("location"));
 
 // An unsigned token is the oldest trick there is.
@@ -183,7 +206,7 @@ const jar3 = ((started3.headers.getSetCookie?.() ?? []).find((c) => c.startsWith
 const auth3 = await fetch(new URL(started3.headers.get("location")), { redirect: "manual" });
 const unsigned = await fetch(auth3.headers.get("location"), { redirect: "manual", headers: { cookie: jar3 } });
 check("an UNSIGNED token is refused",
-  !(unsigned.headers.getSetCookie?.() ?? []).some((c) => c.startsWith("legacy_auth=")),
+  !(unsigned.headers.getSetCookie?.() ?? []).some((c) => c.startsWith(KEKS)),
   unsigned.headers.get("location"));
 idp.normal();
 
@@ -196,7 +219,7 @@ stoppen(app);
 await new Promise((r) => setTimeout(r, 1200));
 const { FIDES_SESSION_SECRET: _drop, ...ohne } = FULL;
 app = await start({ ...ohne, FIDES_SESSION_SECRET: "" });
-const shutStudio = await fetch(`${base}/board`, { redirect: "manual" });
+const shutStudio = await fetch(`${base}${SEITE}`, { redirect: "manual" });
 check("/studio → /login rather than wide open", [302, 307].includes(shutStudio.status), `status=${shutStudio.status}`);
 const shutApi = await api({ cookie: sessionJar });
 check("a previously valid cookie no longer opens the API", !durch(shutApi), `status=${shutApi.status}`);
